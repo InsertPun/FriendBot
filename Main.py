@@ -2,6 +2,7 @@ import json
 import discord
 import asyncio
 from discord.ext import commands
+from gtts import gTTS
 import ollama
 
 with open("discord.json") as file:
@@ -68,7 +69,17 @@ async def on_message(message):
     for chunk in split_message(bot_reply):
         await message.channel.send(chunk)
 
-
+    voice_client = message.guild.voice_client
+    if voice_client and voice_client.is_connected():
+        try:
+            from gtts import gTTS
+            # Create a TTS audio file from the bot's reply
+            tts = gTTS(bot_reply, lang="en")
+            tts.save("response.mp3")
+            # Play the audio file in the voice channel
+            voice_client.play(discord.FFmpegPCMAudio("response.mp3"))
+        except Exception as e:
+            print("TTS/Audio error:", e)
 
 @bot.command(name="join")
 async def join(ctx):
@@ -91,7 +102,6 @@ async def leave(ctx):
         await ctx.send("Left the voice channel")
     else:
         await ctx.send("Not connected to any voice channel")
-
 
 # Start the bot
 bot.run(DISCORD_TOKEN)
