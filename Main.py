@@ -81,6 +81,7 @@ async def on_message(message):
         except Exception as e:
             print("TTS/Audio error:", e)
 
+
 @bot.command(name="join")
 async def join(ctx):
     channel = ctx.guild.get_channel(VOICE_CHANNEL_ID)
