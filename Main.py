@@ -4,6 +4,8 @@ import asyncio
 from discord.ext import commands
 from gtts import gTTS
 import ollama
+import speech_recognition as sr
+from discord_ext_audiorec import Recorder
 
 with open("discord.json") as file:
     discord_related = json.load(file)
@@ -31,6 +33,7 @@ async def get_response(history):
 async def on_ready():
     print(f"FriendBot has logged in as {bot.user}")
 
+
 @bot.event
 async def on_message(message):
     # Ignore messages from bots (including itself) or wrong channel
@@ -41,7 +44,7 @@ async def on_message(message):
     user_text = message.content.strip()
     if user_text == "":
         return  # ignore empty messages
-    if user_text == "!join" or user_text == "!leave":
+    if user_text == "!join" or user_text == "!leave" or user_text == "!shutdown":
         await bot.process_commands(message)
         return
 
@@ -72,11 +75,8 @@ async def on_message(message):
     voice_client = message.guild.voice_client
     if voice_client and voice_client.is_connected():
         try:
-            from gtts import gTTS
-            # Create a TTS audio file from the bot's reply
             tts = gTTS(bot_reply, lang="en")
             tts.save("response.mp3")
-            # Play the audio file in the voice channel
             voice_client.play(discord.FFmpegPCMAudio("response.mp3"))
         except Exception as e:
             print("TTS/Audio error:", e)
@@ -104,5 +104,45 @@ async def leave(ctx):
     else:
         await ctx.send("Not connected to any voice channel")
 
+@bot.command(name="shutdown")
+async def shutdown(ctx):
+    print("Shutdown command received!")
+    await ctx.send("Shutting down...")
+    await bot.close()
+
+
+async def finished_callback(sink, ctx):
+    await ctx.send("Recording complete. Processing audio...")
+    for user_id, audio in sink.audio_data.items():
+        filename = f"recording-{user_id}.wav"
+        audio.file.seek(0)
+        with open(filename, "wb") as f:
+            f.write(audio.file.read())
+
+        recognizer = sr.Recognizer()
+        with sr.AudioFile(filename) as source:
+            audio_data = recognizer.record(source)
+            try:
+                text = recognizer.recognize_google(audio_data)
+            except sr.UnknownValueError:
+                text = "Could not understand the audio."
+            except sr.RequestError as e:
+                text = f"STT service error: {e}"
+
+        await ctx.send(f"Transcription for <@{user_id}>: {text}")
+        os.remove(filename)
+
+
+@bot.command(name="listen")
+async def listen(ctx, duration: int = 5):
+    vc = ctx.voice_client
+    if vc is None:
+        await ctx.send("I'm not connected to a voice channel. Use !join first.")
+        return
+    recorder = Recorder()
+    await ctx.send(f"Recording for {duration} seconds...")
+    vc.start_recording(recorder, finished_callback, ctx)
+    await asyncio.sleep(duration)
+    vc.stop_recording()
 # Start the bot
 bot.run(DISCORD_TOKEN)
