@@ -4,8 +4,8 @@ import asyncio
 from discord.ext import commands
 from gtts import gTTS
 import ollama
-import speech_recognition as sr
-from discord_ext_audiorec import Recorder
+#import speech_recognition as sr
+#from discord_ext_audiorec import Recorder
 
 with open("discord.json") as file:
     discord_related = json.load(file)
@@ -110,7 +110,7 @@ async def shutdown(ctx):
     await ctx.send("Shutting down...")
     await bot.close()
 
-
+'''
 async def finished_callback(sink, ctx):
     await ctx.send("Recording complete. Processing audio...")
     for user_id, audio in sink.audio_data.items():
@@ -144,5 +144,7 @@ async def listen(ctx, duration: int = 5):
     vc.start_recording(recorder, finished_callback, ctx)
     await asyncio.sleep(duration)
     vc.stop_recording()
+'''
+
 # Start the bot
 bot.run(DISCORD_TOKEN)
